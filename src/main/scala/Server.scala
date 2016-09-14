@@ -1,6 +1,8 @@
 import akka.actor.ActorSystem
 import akka.http.scaladsl.Http
+import akka.http.scaladsl.model.ws.{Message, TextMessage}
 import akka.stream.ActorMaterializer
+import akka.stream.scaladsl.Flow
 
 import scala.io.StdIn
 
@@ -18,9 +20,19 @@ object Server extends App {
   val interface = "localhost"
   val port = 8000
 
+  val echoService: Flow[Message, Message, _] = Flow[Message].map {
+    case TextMessage.Strict(txt) => TextMessage("ECHO: " + txt)
+    case _ => TextMessage("Message type unsupported")
+  }
+
   val route = get {
     pathEndOrSingleSlash {
       complete("Welcome to Tic-Tac-Toe")
+    } ~
+    path("ws-echo") {
+      get {
+        handleWebSocketMessages(echoService)
+      }
     }
   }
 
