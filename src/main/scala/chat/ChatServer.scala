@@ -1,15 +1,14 @@
+package chat
+
 import akka.actor.ActorSystem
 import akka.http.scaladsl.Http
 import akka.http.scaladsl.model.ws.{Message, TextMessage}
 import akka.stream.ActorMaterializer
-import akka.stream.scaladsl.Flow
+import akka.stream.scaladsl.{Flow, Source}
 
 import scala.io.StdIn
 
-/**
-  * Created by avovsya on 14/09/2016.
-  */
-object Server extends App {
+object ChatServer extends App {
 
   import akka.http.scaladsl.server.Directives._
 
@@ -32,6 +31,11 @@ object Server extends App {
     path("ws-echo") {
       get {
         handleWebSocketMessages(echoService)
+      }
+    } ~
+    pathPrefix("ws-chat" / IntNumber) { chatId =>
+      parameter('name) { userName =>
+        handleWebSocketMessages(ChatRooms.findOrCreate(chatId).webSocketFlow(userName))
       }
     }
   }
