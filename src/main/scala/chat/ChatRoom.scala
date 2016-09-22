@@ -5,6 +5,8 @@ import akka.http.scaladsl.model.ws.{Message, TextMessage}
 import akka.stream.{FlowShape, OverflowStrategy}
 import akka.stream.scaladsl.{Flow, GraphDSL, Merge, Sink, Source}
 
+import scala.collection.immutable.Queue
+
 object ChatRoom {
   case object Join
   case class ChatMessage(username: String, message: String)
@@ -15,15 +17,20 @@ class ChatRoom extends Actor {
   import ChatRoom._
 
   var users: Set[ActorRef] = Set.empty[ActorRef]
+  var history: Queue[ChatMessage] = Queue.empty[ChatMessage]
 
   def receive = {
     case Join =>
       users += sender()
       context.watch(sender())
+      history.foreach(sender() ! _)
 
     case Terminated(user) => users -= user
 
-    case msg: ChatMessage => users.filterNot(_ == sender()).foreach(_ ! msg)
+    case msg: ChatMessage => {
+      history = history.enqueue(msg)
+      users.filterNot(_ == sender()).foreach(_ ! msg)
+    }
   }
 
 //  import chat.ChatRoomActor._
