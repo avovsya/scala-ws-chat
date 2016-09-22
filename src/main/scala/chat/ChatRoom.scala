@@ -7,7 +7,7 @@ import akka.stream.scaladsl.{Flow, GraphDSL, Merge, Sink, Source}
 
 object ChatRoom {
   case object Join
-  case class ChatMessage(message: String)
+  case class ChatMessage(username: String, message: String)
 //  def apply(roomId: Int)(implicit actorSystem: ActorSystem) = new ChatRoom(roomId, actorSystem)
 }
 
@@ -23,7 +23,7 @@ class ChatRoom extends Actor {
 
     case Terminated(user) => users -= user
 
-    case msg: ChatMessage => users.foreach(_ ! msg)
+    case msg: ChatMessage => users.filterNot(_ == sender()).foreach(_ ! msg)
   }
 
 //  import chat.ChatRoomActor._

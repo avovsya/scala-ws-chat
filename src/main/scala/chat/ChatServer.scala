@@ -48,10 +48,10 @@ object ChatServer extends App {
       Source.actorRef[User.OutgoingMessage](bufferSize = 10, OverflowStrategy.fail)
         .mapMaterializedValue({
           outActor => // get ActorRef that will be materialized by this source
-            userActor ! User.Connected(outActor) // and pass it to userActor
+            userActor ! User.Connect(outActor) // and pass it to userActor
             NotUsed
         })
-        .map((outgoingMessage: User.OutgoingMessage) => TextMessage(outgoingMessage.text))
+        .map((outgoingMessage: User.OutgoingMessage) => TextMessage(outgoingMessage.username + ": " + outgoingMessage.text))
     }
     Flow.fromSinkAndSource(incomingMessages, outgoingMessages)
   }
