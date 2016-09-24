@@ -5,6 +5,7 @@ import akka.actor.{ActorSystem, PoisonPill, Props}
 import akka.http.scaladsl.Http
 import akka.http.scaladsl.model.ws.{Message, TextMessage}
 import akka.stream.{ActorMaterializer, OverflowStrategy}
+import scala.concurrent.duration
 import akka.stream.scaladsl.{Flow, Sink, Source}
 
 import scala.io.StdIn
@@ -20,12 +21,8 @@ object ChatServer extends App {
   val interface = "localhost"
   val port = 8000
 
-  val chatRoom = actorSystem.actorOf(Props(new ChatRoom), "chat")
-
-  val echoService: Flow[Message, Message, _] = Flow[Message].map {
-    case TextMessage.Strict(txt) => TextMessage("ECHO: " + txt)
-    case _ => TextMessage("Message type unsupported")
-  }
+//  val chatRoom = actorSystem.actorOf(Props(new ChatRoom), "chat")
+  val chatRooms = new ChatRooms
 
   // WebSocket Flow
   //
@@ -34,7 +31,7 @@ object ChatServer extends App {
   //
   def chatFlow: Flow [Message, Message, _] = {
 
-    val userActor = actorSystem.actorOf(Props(new User(chatRoom)))
+    val userActor = actorSystem.actorOf(Props(new User(chatRooms)))
 
     val incomingMessages: Sink[Message, NotUsed] = Flow[Message].map {
       // transform websocket message to domain message
@@ -51,7 +48,7 @@ object ChatServer extends App {
             userActor ! User.Connect(outActor) // and pass it to userActor
             NotUsed
         })
-        .map((outgoingMessage: User.OutgoingMessage) => TextMessage(outgoingMessage.username + ": " + outgoingMessage.text))
+        .map((outgoingMessage: User.OutgoingMessage) => TextMessage(outgoingMessage.text))
     }
     Flow.fromSinkAndSource(incomingMessages, outgoingMessages)
   }
@@ -60,19 +57,9 @@ object ChatServer extends App {
     pathEndOrSingleSlash {
       complete("Welcome to Tic-Tac-Toe")
     } ~
-    path("ws-echo") {
-      get {
-        handleWebSocketMessages(echoService)
-      }
-    } ~
     pathPrefix("ws-chat") {
       handleWebSocketMessages(chatFlow)
     }
-//    pathPrefix("ws-chat" / IntNumber) { chatId =>
-//      parameter('name) { userName =>
-//        handleWebSocketMessages(ChatRooms.findOrCreate(chatId).webSocketFlow(userName))
-//      }
-//    }
   }
 
   val binding = Http().bindAndHandle(route, interface, port)

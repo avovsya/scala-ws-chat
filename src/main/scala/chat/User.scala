@@ -1,59 +1,73 @@
 package chat
 
-import akka.actor.{Actor, ActorRef, FSM}
+import akka.actor.{ActorRef, FSM}
 
 object User {
   case class Connect(outgoing: ActorRef)
 
-  case class IncomingMessage(text: String)
-
-  sealed trait OutgoingMessage {
-    val username: String
-    val text: String
-  }
-  case class UserMessage(username: String, text: String) extends OutgoingMessage
-  case class SystemMessage(text: String) extends OutgoingMessage {
-    override val username: String = "System"
-  }
-
   sealed trait State
   case object Disconnected extends State
-  case object Connected extends State
-  case object Chatting extends State
+  case object ChooseUsername extends State
+  case object ChooseRoom extends State
+  case object Chat extends State
 
   sealed trait Data
   case object EmptyData extends Data
-  case class UserData(name: String, outCh: ActorRef) extends Data
+  case class UserData(name: String, chatRoom: ActorRef, outgoingActor: ActorRef) extends Data
+
+  case class IncomingMessage(text: String)
+  case class OutgoingMessage(text: String)
 }
 
-class User(chatRoom: ActorRef) extends FSM[User.State, User.Data] {
+class User(chatRooms: ChatRooms) extends FSM[User.State, User.Data] {
   import User._
+
+  def sendMessage(userData: UserData, outgoingMessage: OutgoingMessage) = {
+    userData.outgoingActor ! outgoingMessage
+  }
+
+  def chooseRoom(userData: UserData): State = {
+    ChatSystem.sendUserSystemMessage(userData, s"Please enter chat room that you would like to join")
+    goto(ChooseRoom) using userData
+  }
 
   startWith(Disconnected, EmptyData)
 
   when(Disconnected) {
     case Event(Connect(outgoingActor), _) =>
-      println(s"User connected $self")
-      outgoingActor ! SystemMessage("Welcome User! Please enter your name:")
-      goto(Connected) using(UserData("", outgoingActor))
+      val userData = UserData("", null, outgoingActor)
+      ChatSystem.sendUserSystemMessage(userData, "Welcome User! Please enter your name:")
+      goto(ChooseUsername) using userData
   }
 
-  when(Connected) {
-    case Event(IncomingMessage(text), UserData(_, outCh)) =>
-      println(s"User $self selected name $text")
-      outCh ! SystemMessage(s"Nice to meet you $text. Please enjoy this chat")
+  when(ChooseUsername) {
+    case Event(IncomingMessage(text), userData @ UserData(_, _, outgoingActor)) =>
+      ChatSystem.sendUserSystemMessage(userData, s"Nice to meet you $text. Please enjoy this chat")
+      chooseRoom(UserData(text, null, outgoingActor))
+  }
+
+  when(ChooseRoom) {
+    case Event(IncomingMessage(text), userData @ UserData(name, _, outgoingActor)) =>
+      ChatSystem.sendUserSystemMessage(userData, s"Welcom to $text room")
+
+      val chatRoom: ActorRef = chatRooms.findOrCreate(text)
+
       chatRoom ! ChatRoom.Join
-      chatRoom ! ChatRoom.ChatMessage("System", s"User $text joined the chat")
-      goto(Chatting) using(UserData(text, outCh))
+      goto(Chat) using UserData(name, chatRoom, outgoingActor)
   }
 
-  when(Chatting) {
-    case Event(IncomingMessage(text), userData @ UserData(username, outCh)) =>
-      chatRoom ! ChatRoom.ChatMessage(username, text)
+  when(Chat) {
+    case Event(IncomingMessage("/leave"), userData @ UserData(name, chatRoom, _)) =>
+      ChatSystem.broadcastSystemMessage(userData.chatRoom, s"User $name left the chat")
+      chatRoom ! ChatRoom.Leave
+      chooseRoom(userData)
+
+    case Event(IncomingMessage(text), userData @ UserData(username, chatRoom, outCh)) =>
+      chatRoom ! ChatRoom.BroadcastMessage(username, text, self)
       stay using userData
 
-    case Event(ChatRoom.ChatMessage(username, text), userData @ UserData(_, outCh)) =>
-      outCh ! UserMessage(username, text)
+    case Event(msg: OutgoingMessage, userData: UserData) =>
+      sendMessage(userData, msg)
       stay using userData
   }
 

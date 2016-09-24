@@ -1,20 +1,20 @@
 package chat
 
-import akka.actor.ActorSystem
+import akka.actor.{ActorRef, ActorSystem, Props}
 
-object ChatRooms {
+class ChatRooms(implicit val actorSystem: ActorSystem) {
 
-  var chatRooms: Map[Int, ChatRoom] = Map.empty[Int, ChatRoom]
+  var chatRooms: Map[String, ActorRef] = Map.empty[String, ActorRef]
 
-//  def findOrCreate(number: Int)(implicit actorSystem: ActorSystem): ChatRoom = {
-//    chatRooms.getOrElse(number, createNewChatRoom(number))
-//  }
+  def findOrCreate(name: String): ActorRef = {
+    chatRooms.getOrElse(name, createNewChatRoom(name))
+  }
 
-  private def createNewChatRoom(number: Int)(implicit actorSystem: ActorSystem): Unit = {
-//    val chatRoom = ChatRoom(number)
-//
-//    chatRooms += number -> chatRoom
-//    chatRoom
+  private def createNewChatRoom(name: String): ActorRef = {
+    val chatRoom = actorSystem.actorOf(Props[ChatRoom])
+
+    chatRooms += name -> chatRoom
+    chatRoom
   }
 
 }
