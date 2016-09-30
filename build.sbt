@@ -1,4 +1,4 @@
-name := "tic-tac-toe-scala"
+name := "scala-ws-chat"
 
 version := "1.0"
 

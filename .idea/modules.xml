@@ -2,8 +2,8 @@
 <project version="4">
   <component name="ProjectModuleManager">
     <modules>
-      <module fileurl="file://$PROJECT_DIR$/.idea/modules/tic-tac-toe-scala.iml" filepath="$PROJECT_DIR$/.idea/modules/tic-tac-toe-scala.iml" />
-      <module fileurl="file://$PROJECT_DIR$/.idea/modules/tic-tac-toe-scala-build.iml" filepath="$PROJECT_DIR$/.idea/modules/tic-tac-toe-scala-build.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/scala-ws-chat.iml" filepath="$PROJECT_DIR$/.idea/modules/scala-ws-chat.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/scala-ws-chat-build.iml" filepath="$PROJECT_DIR$/.idea/modules/scala-ws-chat-build.iml" />
     </modules>
   </component>
 </project>
